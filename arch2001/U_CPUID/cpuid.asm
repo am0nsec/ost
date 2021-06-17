@@ -1,4 +1,4 @@
-;; @file    main.c
+;; @file    cpuid.asm
 ;; @author  Paul L. (@am0nsec)
 ;; @version 1.0
 ;; @link    https://github.com/am0nsec/ost
