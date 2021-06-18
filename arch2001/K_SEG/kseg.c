@@ -77,7 +77,7 @@ EXTERN_C NTSTATUS KsegDeviceIoControl(
 	_In_ PIRP           Irp
 ) {
 	UNREFERENCED_PARAMETER(DeviceObject);
-	KdPrint(("[K_SEG] KsegDeviceIoControl.\n"));
+	KdPrint(("[K_SEG] KsegDeviceIoControl\n"));
 
 	// 1. Get current stack and initialise the return value
 	PIO_STACK_LOCATION Stack = IoGetCurrentIrpStackLocation(Irp);
@@ -97,7 +97,7 @@ EXTERN_C NTSTATUS KsegDeviceIoControl(
 			// 2.1.3 Get the segment register to get.
 			PUINT16 pRegister = (PUINT16)Irp->AssociatedIrp.SystemBuffer;
 			if (*pRegister > 6) {
-				KdPrint(("[K_SEG] Invalid segment register type provided: %d", *pRegister));
+				KdPrint(("[K_SEG] Invalid segment register type provided: %d\n", *pRegister));
 				Status = STATUS_INVALID_DEVICE_REQUEST;
 				break;
 			}
@@ -105,21 +105,32 @@ EXTERN_C NTSTATUS KsegDeviceIoControl(
 			// 2.1.4 Get the segment value
 			Segment Seg = { 0x00 };
 			KsegReadFunctions[*pRegister](&Seg);
-			KdPrint(("[K_SEG] Segment register type %d: 0x02x", *pRegister, Seg.value));
+			KdPrint(("[K_SEG] Segment register type %d: 0x%02x\n", *pRegister, Seg.value));
 
-			// 2.1.5 Get the location of the LDT or GDT
-			//RDMSR_OUT MsrData = { 0x00 };
-			//PSegmentDescriptor pDescriptor = NULL;
-			//if (Seg.elem.TableIndicator == 0x00) {
-			//	// GDT
-			//}
-			//else {
-			//	// LDT
-			//}
+			// 2.1.5 Get the location of the LDT or GDT via either GDTR or LDTR
+			SGDT_OUT Table = { 0x00 };
+			if (Seg.elem.TableIndicator == 0x00) {
+				_read_gdtr(&Table);
+				KdPrint(("[K_SEG] GDT address 0x%p\n", Table.Address));
+			}
+			else {
+				KdPrint(("[K_SEG] Segment withing an LDT. Abort.\n"));
+				Status = STATUS_UNSUCCESSFUL;
+				break;
+				
+			}
+
+			// 2.1.6 Check that the address is valid
+			if (Table.Address == 0x00) {
+				KdPrint(("[K_SEG] GDT address 0x%p\n", Table.Address));
+				Status = STATUS_UNSUCCESSFUL;
+				break;
+			}
 
 			// 2.1.6 Return data back to the caller
 			PKSEG_OUT DataOut = (PKSEG_OUT)Irp->AssociatedIrp.SystemBuffer;
 			DataOut->Seg = Seg;
+			DataOut->Descriptor = Table.Address[Seg.elem.Index];
 			Irp->IoStatus.Information = sizeof(KSEG_OUT);
 			break;
 		}

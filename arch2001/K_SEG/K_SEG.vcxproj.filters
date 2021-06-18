@@ -20,7 +20,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="..\U_SEG\seg.asm">
+    <MASM Include="seg.asm">
       <Filter>Source Files</Filter>
     </MASM>
   </ItemGroup>

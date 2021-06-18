@@ -9,6 +9,9 @@
 #define __KSEG_H_GUARD__
 #include <ntddk.h>
 
+#pragma warning(disable: 4201)
+
+
 /// General information about the driver
 #define KSEG_DEVICE_TYPE 0x8000
 #define KSEG_DEVICE_NAME L"KSeg"
@@ -34,37 +37,97 @@ typedef union _Segment {
 /// C data structure to store the information related to a segment descriptor from either an LDT or the GDT.
 /// </summary>
 typedef union _SegmentDescriptor {
-	struct {
-		UINT64 LimitLow : 16;         // Low 16 bits of the segment limit
-		UINT64 BaseLow : 16;          // 1st and 2nd byte of the base address of the segment
-		UINT64 BaseMidLow : 8;        // 3rd byte of the base address of the segment
+	union {
 		struct {
-			UCHAR Accessed : 1;       // Accessed bit
+			/// <summary>
+			/// 1st and 2nd byte of the segment limit.
+			/// </summary>
+			UINT16 LimitLow;
+			/// <summary>
+			/// 1st and 2nd byte of the base address of the segment.
+			/// </summary>
+			UINT16 BaseLow;
 			union {
-				UCHAR Writable : 1;   // Writable bit. 0 means read only
-				UCHAR Readbale : 1;   // Readable bit. 0 means execute-only
-			} WR;
-			union {
-				UCHAR ExpandDown : 1; // Expand-Down bit.
-				UCHAR Conforming : 1; // If 1 the segment is conforming
-			} EC;
-			UCHAR CodeData : 1;       // Code/Data byte. Code segment if 1
-		} Type;
-		UINT64 System : 1;            // System bit. 0 means OS data structure descriptor
-		UINT64 DPL : 2;               // Descriptor privilege level
-		UINT64 Present : 1;           // Present bit
-		UINT64 LimitUpperNibble : 4;  // Upper nibble of the segment limit
-		UINT64 AVL : 1;               // Available for use by system
-		UINT64 Long : 1;              // Long bit
-		union {
-			UINT64 Big : 1;           //
-			UINT64 Default : 1;       //
-		} BD;
-		UINT64 Granularity : 1;       // Granularity bit. If 0 size in byte otherwise in pages
-		UINT64 BaseMidHigh : 8;       // 4th byte of the base address of the segment
-	} Entry;
-	UINT64 Value;
-} SegmentDescriptor, *PSegmentDescriptor;
+				struct {
+					UINT8 BaseMiddle;
+					UINT8 Flags1;
+					UINT8 Flags2;
+					UINT8 BaseHigh;
+				} Bytes;
+				struct {
+					struct {
+						struct {
+							/// <summary>
+							/// 3rd byte of the base address
+							/// </summary>
+							ULONG BaseMiddle : 8;
+							/// <summary>
+							/// Accessed bit. Switched to 1 when the segment is accessed.
+							/// </summary>
+							ULONG Accessed : 1;
+							/// For code segment: Readable bit. 0 means execute-only while 1 means that the segment contains code and data.
+							/// For data segment: Writable bit. 0 means read-only segment while 1 means RW segment.
+							ULONG WritableReadable : 1;
+							/// For code segment: Conforming bit. If 1 the code segment is conforming.
+							/// For data segment: Expand Down bit. If 1 the segment is an expand-down stack.
+							ULONG ExpandDownConforming : 1;
+							/// <summary>
+							/// Data/Code byte. If 0 this is a data segment. Otherwise code segment.
+							/// </summary>
+							ULONG CodeData : 1;
+							/// <summary>
+							/// System bit. If 0 this is for an OS data structure. Must be 1 for code segment.
+							/// </summary>
+							ULONG System : 1;
+							/// <summary>
+							/// Descriptor privilege level
+							/// </summary>
+							ULONG Dpl : 2;
+							/// <summary>
+							/// Present bit. 
+							/// </summary>
+							ULONG Present : 1;
+							/// <summary>
+							/// Upper Nibble of the limit
+							/// </summary>
+							ULONG LimitHigh : 4;
+							/// <summary>
+							/// Available for use by OS kernel.
+							/// </summary>
+							ULONG AVL : 1;
+							/// <summary>
+							/// Long Mode bit. 32bits if set to 0 otherwise 64bits.
+							/// </summary>
+							ULONG LongMode : 1;
+							/// <summary>
+							/// For code segment: Default bit. 0 means 16bits code segment otherwise 32bits code segment.
+							/// For data segment: Big bit. 0 means 
+							/// </summary>
+							ULONG DefaultBig : 1;
+							/// <summary>
+							/// Granularity bit. If 0 the segment size is in byte, otherwise size in pages.
+							/// </summary>
+							ULONG Granularity : 1;
+							/// <summary>
+							/// 4th byte of the base address.
+							/// </summary>
+							ULONG BaseHigh : 8;
+						};
+					} Bits;
+					/// <summary>
+					/// 4th byte of the base address.
+					/// </summary>
+					ULONG BaseUpper;
+					ULONG MustBeZero;
+				};
+			};
+		};
+		struct {
+			UINT64 DataLow;
+			UINT64 DataHigh;
+		};
+	};
+} SegmentDescriptor, * PSegmentDescriptor;
 
 /// <summary>
 /// Data returned by the IO query
@@ -81,6 +144,16 @@ typedef struct _RDMSR_OUT {
 	UINT32 EAX;
 	UINT32 EDX;
 } RDMSR_OUT, * PRDMSR_OUT;
+
+#pragma pack(push, 1)
+/// <summary>
+/// C data structure representing the returned value of SGDT instruction.
+/// </summary>
+typedef struct _SGDT_OUT {
+	UINT16             Limit;
+	PSegmentDescriptor Address;
+} SGDT_OUT, * PSGDT_OUT;
+#pragma pack(pop)
 
 /// <summary>
 /// IRQL 0 - Executed when the driver is unloaded.
@@ -115,5 +188,9 @@ EXTERN_C VOID STDMETHODCALLTYPE _read_ds(PSegment ds);
 EXTERN_C VOID STDMETHODCALLTYPE _read_es(PSegment es);
 EXTERN_C VOID STDMETHODCALLTYPE _read_fs(PSegment fs);
 EXTERN_C VOID STDMETHODCALLTYPE _read_gs(PSegment gs);
+
+EXTERN_C VOID STDMETHODCALLTYPE _read_gdtr(PSGDT_OUT gdtr);
+EXTERN_C VOID STDMETHODCALLTYPE _read_ldtr(PSegment seg);
+EXTERN_C VOID STDMETHODCALLTYPE _get_pkpcr(PKPCR pKpcr);
 
 #endif // !__KSEG_H_GUARD__
