@@ -55,7 +55,6 @@ EXTERN_C NTSTATUS KmsrDeviceIoControl(
 		// 3.1 Will handle the IOCTL_KMSR_READ IOCTL
 		case IOCTL_KMSR_READ: {
 			// 3.1.1 Ensure that the input and output buffers are large enough
-			KdPrint(("[K_MSR] Input buffer: %d\n", Stack->Parameters.DeviceIoControl.InputBufferLength));
 			if (Stack->Parameters.DeviceIoControl.InputBufferLength < sizeof(RDMSR_IN)
 				|| Stack->Parameters.DeviceIoControl.OutputBufferLength < sizeof(RDMSR_OUT)) {
 				Status = STATUS_BUFFER_TOO_SMALL;
@@ -70,30 +69,17 @@ EXTERN_C NTSTATUS KmsrDeviceIoControl(
 			}
 
 			// 3.1.3 Call the assembly routine to get the data
-			KdPrint(("[K_MSR] _rdmsr.\n"));
+			KdPrint(("[K_MSR] _rdmsr\n"));
 			_rdmsr(pTargetMsr, (PRDMSR_OUT)Irp->AssociatedIrp.SystemBuffer);
 
 			// 3.1.4 Update size of data to return and exit
 			Irp->IoStatus.Information = sizeof(RDMSR_OUT);
 			break;
 		}
-
-		// 3.2 Will handle the IOCTL_KMSR_WRITE IOCTL
-		case IOCTL_KMSR_WRITE: {
-			// 3.2.1 Ensure that the input is large enough
-			if (Stack->Parameters.DeviceIoControl.InputBufferLength < sizeof(RDMSR_IN)) {
-				Status = STATUS_BUFFER_TOO_SMALL;
-				break;
-			}
-
-			// 3.2.2 Call the internal routine to modify an MSR value.
-			KdPrint(("[K_MSR] _wrmsr.\n"));
-			_wrmsr((PWRMSR_IN)Stack->Parameters.DeviceIoControl.Type3InputBuffer);
-			break;
-		}
 		
 		// 3.3 An invalid or at least an unknown IOCTL has been provided 
 		default: {
+			KdPrint(("[K_MSR] Invalid value has been provided\n"));
 			Status = STATUS_INVALID_DEVICE_REQUEST;
 			break;
 		}

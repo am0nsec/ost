@@ -13,20 +13,11 @@ _rdmsr PROC PUBLIC
 	mov r10, rdx
 	rdmsr
 
-	; 2. Save the data in the data structure
+	; 2. Save the data in the structure
 	mov dword ptr [r10 + 0], eax
 	mov dword ptr [r10 + 4], edx
 	ret
 _rdmsr ENDP
-
-_wrmsr PROC PUBLIC
-	xchg ebx, ecx
-	mov ecx, dword ptr [ebx + 0]
-	mov edx, dword ptr [ebx + 4]
-	wrmsr
-
-	ret
-_wrmsr ENDP
 
 ;; End of file
 end

@@ -13,8 +13,7 @@
 #define KMSR_DEVICE_TYPE 0x8000
 
 /// List of IOCTL exposed by this driver
-#define IOCTL_KMSR_READ  CTL_CODE(KMSR_DEVICE_TYPE, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define IOCTL_KMSR_WRITE CTL_CODE(KMSR_DEVICE_TYPE, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_KMSR_READ CTL_CODE(KMSR_DEVICE_TYPE, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 /// Example of IA-32 Architectural MSRs
 #define IA32_STAR           0xC0000081 // System Call Target Address (R/W)
@@ -25,11 +24,6 @@
 #define IA32_GS_BASE        0xC0000101 // Map of BASE Address of GS (R/W)
 #define IA32_KERNEL_GS_BASE 0xC0000102 // Swap Target of BASE Address of GS (R/W
 #define IA32_TSC_AUX        0xC0000103 // Auxiliary TSC (RW)
-
-typedef struct _WRMSR_IN {
-	UINT EAX;
-	UINT EDX;
-} WRMSR_IN, *PWRMSR_IN;
 
 typedef UINT RDMSR_IN;
 typedef PUINT PRDMSR_IN;
@@ -126,7 +120,7 @@ INT main() {
 	printf("IA32_KERNEL_GS_BASE : 0x%p\n", dwMsrValue);
 
 	QUERY_AND_CHECK(QueryDevice(&hDevice, IA32_TSC_AUX, &dwMsrValue));
-	printf("IA32_TSC_AUX        : 0x%p\n", dwMsrValue);
+	printf("IA32_TSC_AUX        : 0x%p\n\n", dwMsrValue);
 
 	// 3. close handle and exit
 	CloseHandle(hDevice);
